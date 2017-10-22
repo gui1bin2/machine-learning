@@ -1,0 +1,68 @@
+import os;
+import numpy;
+import pandas;
+from matplotlib import pyplot as plt;
+from sklearn.preprocessing import scale;
+from sklearn.decomposition import FactorAnalysis;
+from sklearn.cross_validation import cross_val_score;
+
+dataO2O = pandas.read_csv(
+    os.path.join(
+        os.getcwd(),
+        '7.5', 'data.csv'
+    )
+)
+    
+dcs = [
+    '网店浏览量', '论坛浏览量', '线上广告费用', 
+    '地面推广引入量', '线下广告费用', '实体店铺货量','实体店访客数'
+]
+
+tData = dataO2O[dcs];
+
+scaleDataO2O = pandas.DataFrame(scale(tData))
+
+fa = FactorAnalysis()
+fa_scores = []
+
+for n in range(1, 8):
+    fa.n_components = n
+    fa_scores.append(numpy.mean(cross_val_score(fa, tData)))
+
+#获取最佳的因子数
+n = numpy.argmax(fa_scores)+1
+
+fa = FactorAnalysis(n, tol=0.000001)
+fa.fit(scaleDataO2O)
+
+loadingVO2O = pandas.DataFrame({
+        "PA1": fa.components_[0],
+        "PA2": fa.components_[1]
+    }, index=dcs
+)
+
+#设置字体
+font = {
+    'family': 'SimHei',
+    'size': 20    
+}
+plt.rc('font', **font);
+
+fig = plt.figure(figsize=(10, 10), dpi=80, frameon=False)
+sp = fig.add_subplot(111)
+sp.axvline(x=0, linewidth=1)
+sp.axhline(y=0, linewidth=1)
+#解决负号是一个矩形的问题
+plt.rcParams['axes.unicode_minus']=False
+sp.scatter(loadingVO2O['PA1'], loadingVO2O['PA2'])
+loadingVO2O.apply(lambda row: plt.text(row.PA1, row.PA2, row.name, fontsize=15), axis=1)
+
+
+sum(loadingVO2O['PA1']**2)/6
+sum(loadingVO2O['PA2']**2)/6
+
+sum(loadingVO2O['PA1']**2)/6+sum(loadingVO2O['PA2']**2)/6
+
+result = fa.transform(scaleDataO2O)
+
+plt.plot(result, 'o')
