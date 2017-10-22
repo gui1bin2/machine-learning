@@ -1,0 +1,92 @@
+# -*- coding: utf-8 -*-
+import os
+import pandas;
+import statsmodels.api as sm;
+import matplotlib.pyplot as plt;
+import statsmodels.tsa.stattools as ts;
+
+#读取数据
+dateparse = lambda dates: pandas.datetime.strptime(
+    dates, '%Y%m%d'
+)
+data = pandas.read_csv(
+    os.path.join(
+        os.getcwd(),
+        '7.7.3', 'data.csv'
+    ), 
+    parse_dates=['date'],
+    date_parser=dateparse, 
+    index_col='date'
+)
+
+plt.figure(figsize=(10,6))
+plt.plot(data, 'r', label='Raw')
+plt.legend(loc=0)
+
+#使用ADF单位根检验法，检验时间序列的稳定性
+def tagADF(t):
+    result = pandas.DataFrame(index=[
+            "Test Statistic Value", "p-value", "Lags Used", 
+            "Number of Observations Used", 
+            "Critical Value(1%)", "Critical Value(5%)", "Critical Value(10%)"
+        ], columns=['value']
+    );
+    result['value']['Test Statistic Value'] = t[0]
+    result['value']['p-value'] = t[1]
+    result['value']['Lags Used'] = t[2]
+    result['value']['Number of Observations Used'] = t[3]
+    result['value']['Critical Value(1%)'] = t[4]['1%']
+    result['value']['Critical Value(5%)'] = t[4]['5%']
+    result['value']['Critical Value(10%)'] = t[4]['10%']
+    return result;
+
+adf_Data = ts.adfuller(data.iloc[:,0])
+
+#原假设：时间序列不是平稳的时间序列数据，属于第二类假设
+tagADF(adf_Data)
+
+diff = data.diff(1).dropna()
+
+plt.figure(figsize=(10,6))
+plt.plot(diff, 'r', label='Diff')
+plt.legend(loc=0)
+
+adfDiff = ts.adfuller(diff.iloc[:,0])
+
+tagADF(adfDiff)
+
+ic = sm.tsa.arma_order_select_ic(
+    diff, 
+    max_ar=6, 
+    max_ma=6, 
+    ic='aic'
+)
+
+order = (6, 6)
+
+ARMAModel = sm.tsa.ARMA(diff, order).fit()
+
+delta = ARMAModel.fittedvalues - diff.iloc[:,0]
+score = 1 - delta.var()/diff.var()
+
+plt.figure(figsize=(10, 6))
+plt.plot(diff, 'r', label='Raw')
+plt.plot(ARMAModel.fittedvalues, 'g',label='ARMA Model')
+plt.legend()
+
+p = ARMAModel.predict(
+    start='2016-03-31', 
+    end='2016-04-10'
+)
+
+def revert(diffValues, *lastValue):
+    for i in range(len(lastValue)):
+        result = [];
+        lv = lastValue[i];
+        for dv in diffValues:
+            lv = dv + lv
+            result.append(lv)
+        diffValues = result
+    return diffValues;
+    
+r = revert(p, 10395)
