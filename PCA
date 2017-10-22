@@ -1,0 +1,81 @@
+# -*- coding: utf-8 -*-
+
+import os;
+import pandas
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+
+import matplotlib.pyplot as plt
+
+data = pandas.read_csv(
+    os.path.join(
+        os.getcwd(),
+        '7.4.1', 'data.csv'
+    )
+)
+
+fColumns = [
+    '工作日上班时电话时长', '工作日下半时电话时长', 
+    '周末电话时长', 
+    '国际电话时长', '总电话时长', '平均每次通话时长'
+]
+
+import matplotlib;
+from pandas.tools.plotting import scatter_matrix;
+
+font = {
+    'family' : 'SimHei'
+}
+matplotlib.rc('font', **font)
+matplotlib.rcParams['axes.unicode_minus'] = False
+
+#%matplotlib qt
+scatter_matrix(
+    data[fColumns], 
+    figsize=(10, 10), diagonal='hist'
+)
+dCorr = data[fColumns].corr()
+
+fColumns = [
+    '工作日上班时电话时长', '工作日下半时电话时长', 
+    '周末电话时长', '国际电话时长', 
+    '平均每次通话时长'
+]
+
+pca_2 = PCA(n_components=2)
+data_pca_2 = pandas.DataFrame(
+    pca_2.fit_transform(data[fColumns])
+)
+plt.scatter(
+    data_pca_2[0], 
+    data_pca_2[1]
+)
+
+kmModel = KMeans(n_clusters=3)
+kmModel = kmModel.fit(data[fColumns])
+
+pTarget = kmModel.predict(data[fColumns])
+
+pandas.crosstab(pTarget, pTarget)
+
+plt.scatter(
+    data_pca_2[0], 
+    data_pca_2[1],
+    c=pTarget
+)
+
+dMean = pandas.DataFrame(columns=fColumns+['分类'])
+data_gb = data[fColumns].groupby(pTarget)
+i = 0;
+for g in data_gb.groups:
+    rMean = data_gb.get_group(g).mean()
+    rMean['分类'] = g;
+    dMean = dMean.append(rMean, ignore_index=True)
+    subData = data_gb.get_group(g)
+    for column in fColumns:
+        i = i+1;
+        p = plt.subplot(3, 5, i)
+        p.set_title(column)
+        p.set_ylabel(str(g) + "分类")
+        plt.hist(subData[column], bins=20)
+    
