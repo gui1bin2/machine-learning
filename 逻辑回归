@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+
+import os;
+import pandas;
+import matplotlib;
+from pandas.tools.plotting import scatter_matrix;
+
+data = pandas.read_csv(
+    os.path.join(
+        os.getcwd(),
+        '7.2.2', 'data.csv'
+    )
+)
+
+font = {
+    'family' : 'SimHei'
+}
+matplotlib.rc('font', **font)
+
+scatter_matrix(
+    data[["店铺的面积", "距离最近的车站", "月营业额"]], 
+    figsize=(10, 10), diagonal='kde'
+)
+
+data[["店铺的面积", "距离最近的车站", "月营业额"]].corr()
+
+x = data[["店铺的面积", "距离最近的车站"]]
+y = data[["月营业额"]]
+
+from sklearn.linear_model import LinearRegression
+#建模
+lrModel = LinearRegression()
+#训练模型
+lrModel.fit(x, y)
+#评分
+lrModel.score(x, y)
+#预测
+lrModel.predict([10, 110])
+
+lrModel.predict([[10, 110],[20, 110]])
+
+#查看参数
+lrModel.coef_
+
+#查看截距
+lrModel.intercept_
